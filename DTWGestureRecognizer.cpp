@@ -21,11 +21,11 @@ void DTWGestureRecognizer::Add(FeatureSequence seq, string l) {
 
 string DTWGestureRecognizer::Recognize(FeatureSequence seq) {
   double min_dist = MAXLONG ;
-  string _class = "__UNKNOWN";
+  string _class = "UNKNOWN";
   for(int i=0 ; i<known_sequences_.size() ;i++) {
     FeatureSequence example = known_sequences_[i];
     known_sequences_[0];
-    if (Euclidian(seq, example) < first_threshold_) {
+    if (Euclidian(seq[seq.size()-1], example[seq.size()-1]) < first_threshold_) {
       double d = dtw(seq, example) / (example.size());
       if (d < min_dist){
         min_dist = d;
@@ -33,11 +33,11 @@ string DTWGestureRecognizer::Recognize(FeatureSequence seq) {
       }
     }
   }
-  return (min_dist<global_threshold_ ? _class : "__UNKNOWN")/*+" "+minDist.ToString()*/ ;
+  return (min_dist<global_threshold_ ? _class : "UNKNOWN")/*+" "+minDist.ToString()*/ ;
 }
 
 // Computes a 1-distance between two observations. (aka Manhattan distance).
-double DTWGestureRecognizer::Manhattan(FeatureSequence &a, FeatureSequence &b) {
+double DTWGestureRecognizer::Manhattan(FeatureData &a, FeatureData &b) {
   double d = 0 ;
   for(int i=0 ; i<dim_ ;i++){
     d += abs(a[i]-b[i]) ;
@@ -46,7 +46,7 @@ double DTWGestureRecognizer::Manhattan(FeatureSequence &a, FeatureSequence &b) {
 }
 
 // Computes a 1-distance between two observations. (aka Manhattan distance).
-double DTWGestureRecognizer::Euclidian(FeatureSequence &a, FeatureSequence &b) {
+double DTWGestureRecognizer::Euclidian(FeatureData &a, FeatureData &b) {
   double d = 0 ;
   for(int i=0 ; i<dim_ ;i++){
     d += pow(a[i]-b[i],2) ;
@@ -59,6 +59,7 @@ double DTWGestureRecognizer::dtw(FeatureSequence seq1, FeatureSequence seq2)
 {
   // Init
   FeatureSequence seq1r = FeatureSequence(seq1); 
+  //seq1r seq2r
   FeatureSequence seq2r = FeatureSequence(seq2);
   int m = seq1r.size();
   int n = seq2r.size();
@@ -68,46 +69,39 @@ double DTWGestureRecognizer::dtw(FeatureSequence seq1, FeatureSequence seq2)
 
   for(int i=0 ; i<=m ; i++) {
     for(int j=0 ; j<=n ; j++) {
-      tab[i*n+j]=MAXLONG ;
-      slope_i[i*n+j] = 0;
-      slope_j[i*n+j] = 0;
+      tab[i*(n+1)+j]=MAXLONG ;
+      slope_i[i*(n+1)+j] = 0;
+      slope_j[i*(n+1)+j] = 0;
     }
   }
   tab[0]=0 ;
 
   // Dynamic computation of the DTW matrix.
   for(int i=1 ; i<=m ; i++){
-    string a = "hello";
-    a = a.substr(0,a.find_last_of("\\"));
-    for(int j=1 ; j<=n ; j++)
-    {
-      if (tab[i*n+j - 1] < tab[(i - 1)*n+j - 1] && tab[i*n+j - 1] < tab[(i - 1)*n+j] && slope_i[i*n+j - 1] < max_slope_)
-      {
-        tab[i*n+j] = Euclidian((double[])seq1r[i-1],(double[])seq2r[j-1]) + tab[i, j - 1];
-        slopeI[i, j] = slopeJ[i,j-1]+1 ;;
-        slopeJ[i, j] = 0;
+    for(int j=1 ; j<=n ; j++) {
+      if (tab[i*(n+1)+j - 1] < tab[(i - 1)*(n+1)+j - 1] && tab[i*(n+1)+j - 1] < tab[(i - 1)*(n+1)+j] && slope_i[i*(n+1)+j - 1] < max_slope_) {
+        tab[i*(n+1)+j] = Euclidian(seq1r[i-1],seq2r[j-1]) + tab[i*(n+1)+j - 1];
+        slope_i[i*(n+1)+j] = slope_j[i*(n+1)+j-1]+1;
+        slope_j[i*(n+1)+j] = 0;
       }
-      else if (tab[i - 1, j] < tab[i - 1, j - 1] && tab[i - 1, j] < tab[i, j - 1] && slopeJ[i - 1, j] < maxSlope)
-      {
-        tab[i, j] = dist2((double[])seq1r[i - 1], (double[])seq2r[j - 1]) + tab[i - 1, j];
-        slopeI[i, j] = 0;
-        slopeJ[i, j] = slopeJ[i-1, j] + 1;
+      else if (tab[(i - 1)*(n+1)+j] < tab[(i - 1)*(n+1)+j - 1] && tab[(i - 1)*(n+1)+j] < tab[i*(n+1)+j - 1] && slope_j[(i - 1)*(n+1)+j] < max_slope_) {
+        tab[i*(n+1)+j] = Euclidian(seq1r[i - 1], seq2r[j - 1]) + tab[(i - 1)*(n+1)+j];
+        slope_i[i*(n+1)+j] = 0;
+        slope_j[i*(n+1)+j] = slope_j[(i-1)*(n+1)+j] + 1;
       }
-      else
-      {
-        tab[i, j] = dist2((double[])seq1r[i - 1], (double[])seq2r[j - 1]) + tab[i - 1, j - 1];
-        slopeI[i, j] = 0;
-        slopeJ[i, j] = 0;
+      else {
+        tab[i*(n+1)+j] = Euclidian(seq1r[i - 1], seq2r[j - 1]) + tab[(i - 1)*(n+1)+j - 1];
+        slope_i[i*(n+1)+j] = 0;
+        slope_j[i*(n+1)+j] = 0;
       }
     }
   }
 
   // Find best between seq2 and an ending (postfix) of seq1.
-  double bestMatch = double.PositiveInfinity;
-  for (int i = 1; i < seq1r.Count + 1; i++)
-  {
-    if (tab[i, seq2r.Count] < bestMatch)
-      bestMatch = tab[i, seq2r.Count];
+  double best_match = MAXLONG;
+  for (int i = 1; i <= seq1r.size(); i++) {
+    if (tab[i*(n+1)+seq2r.size()] < best_match)
+      best_match = tab[i*(n+1)+seq2r.size()];
   }
-  return bestMatch;
+  return best_match;
 }

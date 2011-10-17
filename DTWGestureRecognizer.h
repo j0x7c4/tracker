@@ -1,6 +1,6 @@
 #include "stdafx.h"
 
-typedef double FeatureData;
+typedef vector<double> FeatureData;
 typedef vector<FeatureData> FeatureSequence; 
 typedef string LabelData;
 typedef vector<LabelData> LabelDataList;
@@ -24,9 +24,9 @@ class DTWGestureRecognizer {
   int max_slope_;
 
   // Computes a 1-distance between two observations. (aka Manhattan distance).
-  double Manhattan(FeatureSequence &a, FeatureSequence &b);
+  double Manhattan(FeatureData &a, FeatureData &b);
   // Computes a 2-distance between two observations. (aka Euclidian distance).
-  double Euclidian(FeatureSequence &a, FeatureSequence &b);
+  double Euclidian(FeatureData &a, FeatureData &b);
 
 public:
   DTWGestureRecognizer(int dim,double threshold, double firstThreshold);
