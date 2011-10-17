@@ -1,11 +1,5 @@
-#include<Windows.h>
-#include<vector>
-#include<list>
-#include<MSR_NuiApi.h>
-#include<cv.h>
-#include<highgui.h>
-#include<iostream>
-using namespace std;
+#include "stdafx.h"
+
 typedef BYTE* ImageData;
 typedef list<ImageData> ImageDataList; 
 
@@ -14,6 +8,12 @@ private:
   //Event Handle
   HANDLE next_color_frame_event_;
   HANDLE next_depth_frame_event_;
+  HANDLE depth_buffer_full_event_;
+  HANDLE color_buffer_full_event_;
+  HANDLE depth_buffer_empty_event_;
+  HANDLE color_buffer_empty_event_;
+  HANDLE write_buffer_full_event_;
+  HANDLE write_buffer_empty_event_;
   //Mutex Handle
   HANDLE read_mutex_;
   HANDLE write_mutex_;
