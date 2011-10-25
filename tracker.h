@@ -8,12 +8,14 @@ private:
   //Event Handle
   HANDLE next_color_frame_event_;
   HANDLE next_depth_frame_event_;
-  HANDLE depth_buffer_full_event_;
-  HANDLE color_buffer_full_event_;
-  HANDLE depth_buffer_empty_event_;
-  HANDLE color_buffer_empty_event_;
-  HANDLE write_buffer_full_event_;
-  HANDLE write_buffer_empty_event_;
+  HANDLE depth_read_buffer_full_event_;
+  HANDLE color_read_buffer_full_event_;
+  HANDLE depth_read_buffer_empty_event_;
+  HANDLE color_read_buffer_empty_event_;
+  HANDLE depth_write_buffer_full_event_;
+  HANDLE depth_write_buffer_empty_event_;
+  HANDLE color_write_buffer_full_event_;
+  HANDLE color_write_buffer_empty_event_;
   //Mutex Handle
   HANDLE read_mutex_;
   HANDLE write_mutex_;
@@ -26,11 +28,14 @@ private:
   HANDLE depth_stream_;
   HANDLE color_stream_;
   //The image needs to be tracker
-  ImageDataList image_process_buffer_; 
+  ImageDataList depth_image_process_buffer_;
+  ImageDataList color_image_process_buffer_; 
   //The image read from camera
-  ImageDataList image_read_buffer_;
+  ImageDataList depth_image_read_buffer_;
+  ImageDataList color_image_read_buffer_;
   //The image needs to be showed
-  ImageDataList image_write_buffer_;
+  ImageDataList depth_image_write_buffer_;
+  ImageDataList color_image_write_buffer_;
   
   //
   bool is_running;
@@ -55,10 +60,10 @@ public:
   void StartGetDepthStreamThread();
   void GetColorStream();
   //Process image
-  void ImageProcess();
+  void DepthImageProcess();
   void StartImageProcessThread();
   //Show image
-  void ImageShow();
+  void ShowDepthImage();
   void StartImageShowThread();
 protected:
 };

@@ -15,11 +15,13 @@ Tracker::Tracker() {
   process_thread_ = NULL;
   write_thread_ = NULL;
   //The image needs to be tracker
-  image_process_buffer_.clear(); 
+  //depth_image_process_buffer_.clear(); 
   //The image read from camera
-  image_read_buffer_.clear();
+  depth_image_read_buffer_.clear();
+  color_image_read_buffer_.clear();
   //The image needs to be showed
-  image_write_buffer_.clear();
+  depth_image_write_buffer_.clear();
+  color_image_write_buffer_.clear();
 }
 void Tracker::Init( ) {
   //Initialize Kinect
@@ -30,10 +32,14 @@ void Tracker::Init( ) {
   }
   //read_mutex_ = CreateMutex(NULL,FALSE,(LPCWSTR)"READ_MUTEX");
   //write_mutex_ = CreateMutex(NULL,FALSE,(LPCWSTR)"WRITE_MUTEX");
-  depth_buffer_full_event_ = CreateEvent(NULL,FALSE,FALSE,NULL);
-  depth_buffer_empty_event_ = CreateEvent(NULL,FALSE,TRUE,NULL);
-  write_buffer_full_event_ = CreateEvent(NULL,FALSE,FALSE,NULL);
-  write_buffer_empty_event_ = CreateEvent(NULL,FALSE,TRUE,NULL);
+  depth_read_buffer_full_event_ = CreateEvent(NULL,FALSE,FALSE,NULL);
+  color_read_buffer_full_event_ = CreateEvent(NULL,FALSE,FALSE,NULL);
+  depth_read_buffer_empty_event_ = CreateEvent(NULL,FALSE,TRUE,NULL);
+  color_read_buffer_empty_event_ = CreateEvent(NULL,FALSE,TRUE,NULL);
+  depth_write_buffer_full_event_ = CreateEvent(NULL,FALSE,FALSE,NULL);
+  color_write_buffer_full_event_ = CreateEvent(NULL,FALSE,FALSE,NULL);
+  depth_write_buffer_empty_event_ = CreateEvent(NULL,FALSE,TRUE,NULL);
+  color_write_buffer_empty_event_ = CreateEvent(NULL,FALSE,TRUE,NULL);
   is_running = true;
 }
 Tracker::~Tracker() {
@@ -96,15 +102,15 @@ void Tracker::GetDepthStream ( ) {
 	    NuiImageStreamReleaseFrame(depth_stream_,image_frame);
       buffer_left_space--;
     }
-    result = WaitForSingleObject(depth_buffer_empty_event_,INFINITE);
+    result = WaitForSingleObject(depth_read_buffer_empty_event_,INFINITE);
     if ( result != WAIT_OBJECT_0 && result != WAIT_ABANDONED ) {
 	    cout<<"Wait error!"<<endl;
 	    return;
 	  }
     for ( ImageDataList::iterator iter = read_buffer.begin(); iter != read_buffer.end(); iter++ ) {
-      image_read_buffer_.push_back(*iter);
+      depth_image_read_buffer_.push_back(*iter);
     }
-    SetEvent(depth_buffer_full_event_);
+    SetEvent(depth_read_buffer_full_event_);
     //ReleaseMutex(read_mutex_);
     read_buffer.clear();
   }
@@ -221,19 +227,19 @@ void Tracker::StartGetDepthStreamThread ( ) {
 }
 
 
-void Tracker::ImageProcess( ) {
+void Tracker::DepthImageProcess( ) {
   //process_thread_ =CreateThread(NULL,0,(LPTHREAD_START_ROUTINE)_ImageProcess, NULL, 0, NULL);
   HRESULT result;
   
   while ( is_running ) {
-    result = WaitForSingleObject(depth_buffer_full_event_,INFINITE);
+    result = WaitForSingleObject(depth_read_buffer_full_event_,INFINITE);
     if ( result != WAIT_OBJECT_0 && result != WAIT_ABANDONED ) {
 	    cout<<"Wait error!"<<endl;
 	    return;
 	  }
-    ImageDataList buffer(image_read_buffer_);
-    image_read_buffer_.clear();
-    SetEvent(depth_buffer_empty_event_);
+    ImageDataList buffer(depth_image_read_buffer_);
+    depth_image_read_buffer_.clear();
+    SetEvent(depth_read_buffer_empty_event_);
     //ReleaseMutex(read_mutex_);
 
     /* 
@@ -242,22 +248,22 @@ void Tracker::ImageProcess( ) {
     */
 
     //trans procced data to write_buffer
-    result = WaitForSingleObject(write_buffer_empty_event_,INFINITE);
+    result = WaitForSingleObject(depth_write_buffer_empty_event_,INFINITE);
     if ( result != WAIT_OBJECT_0 && result != WAIT_ABANDONED ) {
 	    cout<<"Wait error!"<<endl;
 	    return;
 	  }
     for ( ImageDataList::iterator iter = buffer.begin(); iter!=buffer.end(); iter++ ) {
-      image_write_buffer_.push_back(*iter);
+      depth_image_write_buffer_.push_back(*iter);
     }
-    SetEvent(write_buffer_full_event_);
+    SetEvent(depth_write_buffer_full_event_);
   }
   return;
 }
 
 static DWORD WINAPI _ImageProcess( LPVOID thread_parameter ) {
   Tracker * tracker = (Tracker*)thread_parameter;
-  tracker->ImageProcess();
+  tracker->DepthImageProcess();
   return 0;
 }
 
@@ -266,24 +272,24 @@ void Tracker::StartImageProcessThread ( ) {
   process_thread_ = CreateThread(NULL, 0, _ImageProcess, this, NULL, 0);
 }
 
-void Tracker::ImageShow( ) {
+void Tracker::ShowDepthImage( ) {
   cvNamedWindow("DepthImage", CV_WINDOW_AUTOSIZE);
   //write_thread_ =CreateThread(NULL,0,(LPTHREAD_START_ROUTINE)_ImageShow, NULL, 0, NULL);
   HRESULT result;
   IplImage *image = cvCreateImageHeader(cvSize(320, 240), IPL_DEPTH_8U, 3);
   while ( is_running ) {
-    result = WaitForSingleObject(write_buffer_full_event_,INFINITE);
-    for ( ImageDataList::iterator iter = image_write_buffer_.begin(); iter != image_write_buffer_.end() ; iter++ ) {
+    result = WaitForSingleObject(depth_write_buffer_full_event_,INFINITE);
+    for ( ImageDataList::iterator iter = depth_image_write_buffer_.begin(); iter != depth_image_write_buffer_.end() ; iter++ ) {
       cvSetData(image,(BYTE*)(*iter),image->widthStep);
       cvShowImage("DepthImage",image);
       cvWaitKey(1);
     }
-    SetEvent(write_buffer_empty_event_);
+    SetEvent(depth_write_buffer_empty_event_);
     //clear data
-    for ( ImageDataList::iterator iter = image_write_buffer_.begin(); iter != image_write_buffer_.end() ; iter++ ) {
+    for ( ImageDataList::iterator iter = depth_image_write_buffer_.begin(); iter != depth_image_write_buffer_.end() ; iter++ ) {
       delete *iter;
     }
-    image_write_buffer_.clear();
+    depth_image_write_buffer_.clear();
     //ReleaseMutex(write_mutex_);
   }
   cvReleaseImage(&image);
@@ -292,7 +298,7 @@ void Tracker::ImageShow( ) {
 
 static DWORD WINAPI _ImageShow( LPVOID thread_parameter ) {
   Tracker * tracker = (Tracker*)thread_parameter;
-  tracker->ImageShow();
+  tracker->ShowDepthImage();
   return 0;
 }
 

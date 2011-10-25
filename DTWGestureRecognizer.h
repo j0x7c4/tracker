@@ -6,6 +6,10 @@ typedef string LabelData;
 typedef vector<LabelData> LabelDataList;
 typedef vector<FeatureSequence> FeatureDataList;
 
+#define INF MAXLONG
+#define MAX(x,y) ((x)>(y)?(x):(y))
+#define MIN(x,y) ((x)<(y)?(x):(y))
+
 class DTWGestureRecognizer {
   // Size of obeservations vectors.
   int dim_;
@@ -20,8 +24,8 @@ class DTWGestureRecognizer {
   // Maximum distance between the last observations of each sequence.
   double first_threshold_;
 
-  // Maximum vertical or horizontal steps in a row.
-  int max_slope_;
+  // Maximum window size.
+  int window_size_;
 
   // Computes a 1-distance between two observations. (aka Manhattan distance).
   double Manhattan(FeatureData &a, FeatureData &b);
@@ -40,5 +44,5 @@ public:
   // If the distance between the last observations of each sequence is too great, or if the overall DTW distance between the two sequence is too great, no gesture will be recognized.
   string Recognize(FeatureSequence seq);
   // Compute the min DTW distance between seq2 and all possible endings of seq1.
-  double dtw(FeatureSequence seq1, FeatureSequence seq2);
+  double dtw(FeatureSequence seq1, FeatureSequence seq2,int constraint=MAXINT);
 };
